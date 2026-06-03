@@ -1,0 +1,43 @@
+{
+  "name": "repo-critic-ai",
+  "version": "0.1.0",
+  "description": "Local developer agent that analyses a GitHub repository and returns a structured quality report with a health score.",
+  "type": "module",
+  "bin": {
+    "repo-critic": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "test": "vitest",
+    "lint": "biome check src/",
+    "format": "biome format --write src/",
+    "analyze": "tsx src/index.ts analyze"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@octokit/rest": "^21.1.1",
+    "commander": "^12.1.0",
+    "hono": "^4.7.10",
+    "openai": "^4.103.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.15.21",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "github",
+    "code-quality",
+    "ai",
+    "cli",
+    "developer-tools"
+  ],
+  "license": "MIT"
+}

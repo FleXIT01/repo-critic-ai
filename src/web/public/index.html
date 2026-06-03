@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>repo-critic-ai</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      line-height: 1.6;
+    }
+
+    h1 { color: #58a6ff; font-size: 1.75rem; margin-bottom: .25rem; }
+    .subtitle { color: #8b949e; margin-bottom: 2rem; }
+
+    form { display: flex; gap: .5rem; flex-wrap: wrap; }
+    input {
+      flex: 1 1 320px;
+      background: #161b22;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      padding: .55rem 1rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      outline: none;
+    }
+    input:focus { border-color: #58a6ff; }
+    button {
+      background: #238636;
+      color: #fff;
+      border: none;
+      padding: .55rem 1.5rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:hover { background: #2ea043; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    #status { margin-top: 1.25rem; color: #8b949e; min-height: 1.5rem; }
+    #error { color: #f85149; margin-top: 1rem; }
+
+    #result {
+      margin-top: 2rem;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1.75rem 2rem;
+    }
+
+    /* Markdown styles */
+    #result h1 { font-size: 1.5rem; border-bottom: 1px solid #21262d; padding-bottom: .5rem; margin-bottom: 1rem; }
+    #result h2 { font-size: 1.15rem; margin: 1.5rem 0 .5rem; color: #e6edf3; }
+    #result p { margin: .5rem 0; }
+    #result blockquote { border-left: 3px solid #30363d; padding-left: 1rem; color: #8b949e; margin: .75rem 0; }
+    #result table { border-collapse: collapse; width: 100%; margin: .5rem 0 1rem; }
+    #result td, #result th { border: 1px solid #30363d; padding: .35rem .75rem; font-size: .9rem; }
+    #result th { background: #161b22; }
+    #result code { background: #161b22; border-radius: 4px; padding: .15em .4em; font-size: .88em; }
+    #result pre { background: #161b22; border-radius: 6px; padding: 1rem; overflow-x: auto; margin: .75rem 0; }
+    #result pre code { background: none; padding: 0; }
+    #result hr { border: none; border-top: 1px solid #21262d; margin: 1.5rem 0; }
+    #result em { color: #8b949e; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <h1>🔍 repo-critic-ai</h1>
+  <p class="subtitle">Analyse a GitHub repository and get a quality health report.</p>
+
+  <form id="form">
+    <input
+      id="repoUrl"
+      type="text"
+      placeholder="owner/repo  or  https://github.com/owner/repo"
+      autocomplete="off"
+      required
+    />
+    <button type="submit" id="btn">Analyse</button>
+  </form>
+
+  <p id="status"></p>
+  <p id="error" hidden></p>
+  <div id="result" hidden></div>
+
+  <script>
+    const form   = document.getElementById('form');
+    const input  = document.getElementById('repoUrl');
+    const btn    = document.getElementById('btn');
+    const status = document.getElementById('status');
+    const error  = document.getElementById('error');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      status.textContent = '⏳ Analysing… this may take 10–30 seconds.';
+      error.hidden = true;
+      result.hidden = true;
+
+      try {
+        const res = await fetch('/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repoUrl: input.value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Analysis failed');
+
+        status.textContent = `✅ Score: ${data.score}/100 (${data.grade}) — loading full report…`;
+
+        const reportRes = await fetch(`/report/${data.id}`);
+        const report = await reportRes.json();
+
+        result.innerHTML = marked.parse(report.markdownReport);
+        result.hidden = false;
+        status.textContent = '';
+      } catch (err) {
+        error.textContent = '❌ ' + err.message;
+        error.hidden = false;
+        status.textContent = '';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
