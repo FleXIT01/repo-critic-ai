@@ -14,13 +14,22 @@ const EXCLUDED_DIRS = new Set([
 // Matches // TODO: ..., # FIXME ..., * HACK: ..., etc.
 const TODO_RE = /(?:\/\/|#|\*)\s*(TODO|FIXME|HACK|NOTE)[:\s]+(.*)/i;
 
+const SECURITY_RE = /\b(auth|password|token|encrypt|secret|credential|hash|salt|jwt|oauth|session|csrf|xss|sql|injection)\b/i;
+const PERF_TEXT_RE = /\b(perf|performance|optim|slow|cache|memo|latency|throughput|bottleneck|cpu|memory.?leak)\b/i;
+const HOT_PATH_RE = /\b(for|while)\s*\(|\.(?:forEach|map|filter|reduce)\s*\(|\brender\s*[({]|\bfetch\s*\(/;
+
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 100_000; // 100 KB
 
-function priorityFor(type: string): TodoItem["priority"] {
-  if (type === "FIXME") return "high";
-  if (type === "HACK" || type === "TODO") return "medium";
-  return "low";
+function priorityFor(
+  type: TodoItem["type"],
+  text: string,
+  context: string
+): TodoItem["priority"] {
+  if (SECURITY_RE.test(text)) return "critical";
+  if (PERF_TEXT_RE.test(text) || HOT_PATH_RE.test(context)) return "high";
+  if (type === "NOTE") return "low";
+  return "medium";
 }
 
 function scanContent(path: string, content: string): TodoItem[] {
@@ -30,13 +39,9 @@ function scanContent(path: string, content: string): TodoItem[] {
     const match = TODO_RE.exec(lines[i]);
     if (match) {
       const type = match[1].toUpperCase() as TodoItem["type"];
-      items.push({
-        type,
-        file: path,
-        line: i + 1,
-        text: match[2].trim().slice(0, 120),
-        priority: priorityFor(type),
-      });
+      const text = match[2].trim().slice(0, 120);
+      const context = lines.slice(Math.max(0, i - 5), Math.min(lines.length, i + 6)).join("\n");
+      items.push({ type, file: path, line: i + 1, text, priority: priorityFor(type, text, context) });
     }
   }
   return items;
@@ -90,7 +95,7 @@ export async function scanTodos(
     const todos = results
       .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
       .sort((a, b) => {
-        const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
+        const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
         return order[a.priority] - order[b.priority];
       });
 

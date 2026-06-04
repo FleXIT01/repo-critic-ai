@@ -31,7 +31,8 @@ function calculateGrade(score: number): HealthReport["grade"] {
 function computeTodoScore(todos: TodoItem[]): number {
   let score = 100;
   for (const t of todos) {
-    if (t.priority === "high") score -= 10;
+    if (t.priority === "critical") score -= 20;
+    else if (t.priority === "high") score -= 10;
     else if (t.priority === "medium") score -= 5;
     else score -= 1;
   }

@@ -36,7 +36,7 @@ export interface TodoItem {
   file: string;
   line: number;
   text: string;
-  priority: "high" | "medium" | "low";
+  priority: "critical" | "high" | "medium" | "low";
 }
 
 /** A security concern identified in the repository. */

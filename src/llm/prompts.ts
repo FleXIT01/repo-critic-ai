@@ -15,6 +15,9 @@ export const PROMPTS = {
 
   HEALTH_SUMMARY:
     "You are a senior software engineer. Based on the JSON repository analysis data provided, write exactly 2 sentences: one summarizing the overall quality, one stating the top priority for improvement.",
+
+  README_IMPROVE:
+    "You are a technical writer. Improve the given README by adding or expanding the missing sections listed at the start of the user message. Return only the full improved README in Markdown format, with no additional commentary.",
 } as const;
 
 export type PromptKey = keyof typeof PROMPTS;
