@@ -1,8 +1,8 @@
 # repo-critic-ai
 
-A local developer agent that analyses a GitHub repository and returns a structured quality report with a health score (0–100).
+A local developer agent that analyses a GitHub repository or local project directory and returns a structured quality report with a health score (0–100).
 
-Works without any configuration — just point it at a repo.  
+Works without any configuration — just point it at a repo or a local folder.  
 Optionally plug in an LLM (Ollama, OpenAI, LM Studio) for AI-generated summaries.
 
 ---
@@ -13,13 +13,15 @@ Optionally plug in an LLM (Ollama, OpenAI, LM Studio) for AI-generated summaries
 ```bash
 # Linux / macOS:
 python3 start.py                         # web UI at http://localhost:3000
-python3 start.py analyze owner/repo      # CLI analysis
+python3 start.py analyze .               # analyze current directory (100% offline, no token needed)
+python3 start.py analyze owner/repo      # CLI analysis for GitHub repo
 # Or directly (executable on Linux/macOS):
-./start.py analyze owner/repo
+./start.py analyze .
 
 # Windows:
 python start.py                          # web UI at http://localhost:3000
-python start.py analyze owner/repo       # CLI analysis
+python start.py analyze .                # analyze current directory
+python start.py analyze owner/repo       # CLI analysis for GitHub repo
 ```
 
 **Or directly with npm:**
@@ -55,12 +57,15 @@ npm install
 # Linux / macOS:
 python3 start.py                                  # start web UI (default port 3000)
 python3 start.py web --port 8080                  # custom port
-python3 start.py analyze owner/repo               # CLI: print Markdown report
-python3 start.py analyze owner/repo --improve-readme  # with suggested README improvements
-python3 start.py analyze owner/repo --json        # CLI: raw JSON output
-python3 start.py analyze owner/repo --no-llm      # disable LLM calls
+python3 start.py analyze .                        # analyze current local repo (no token needed!)
+python3 start.py analyze /path/to/local/project   # analyze any local folder
+python3 start.py analyze owner/repo               # CLI: GitHub repo analysis
+python3 start.py analyze . --improve-readme       # with suggested README improvements
+python3 start.py analyze . --json                 # CLI: raw JSON output
+python3 start.py analyze . --no-llm               # disable LLM calls
 
 # Windows:
+python start.py analyze .
 python start.py analyze owner/repo
 ```
 
@@ -72,31 +77,35 @@ The launcher auto-runs `npm install` on first start.
 npx tsx src/index.ts web
 ```
 
-Open [http://localhost:3000](http://localhost:3000), enter a GitHub URL or `owner/repo`, and click **Analyse**.
+Open [http://localhost:3000](http://localhost:3000), enter a GitHub URL, `owner/repo`, or a **local folder path** (e.g. `.` or `/path/to/project`), and click **Analyse**.
 The Web UI features client-side sanitization (DOMPurify) and a one-click button to generate suggested README improvements and diffs.
 
 ### CLI
 
 ```bash
-# Basic (unauthenticated — 60 API req/hour limit)
+# Local analysis (100% offline — no token, no rate limit)
+npx tsx src/index.ts analyze .
+npx tsx src/index.ts analyze /path/to/local/project
+
+# Remote GitHub repo (unauthenticated — 60 API req/hour limit)
 npx tsx src/index.ts analyze facebook/react
 
-# With GitHub token (5 000 req/hour, required for private repos)
+# Remote GitHub repo with token (5 000 req/hour, required for private GitHub repos)
 # Linux / macOS:
 GITHUB_TOKEN=ghp_... npx tsx src/index.ts analyze your-org/private-repo
 # Windows PowerShell:
 $env:GITHUB_TOKEN="ghp_..."; npx tsx src/index.ts analyze your-org/private-repo
 
 # Generate suggested README improvements & diff
-npx tsx src/index.ts analyze owner/repo --improve-readme
+npx tsx src/index.ts analyze . --improve-readme
 # Or standalone README inspection:
-npx tsx src/index.ts improve-readme owner/repo
+npx tsx src/index.ts improve-readme .
 
 # With local Ollama for AI summaries
-LLM_API_KEY=ollama npx tsx src/index.ts analyze owner/repo
+LLM_API_KEY=ollama npx tsx src/index.ts analyze .
 
 # JSON output (pipe to jq, save to file, etc.)
-npx tsx src/index.ts analyze owner/repo --json | jq .score
+npx tsx src/index.ts analyze . --json | jq .score
 ```
 
 ---

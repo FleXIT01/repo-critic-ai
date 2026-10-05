@@ -18,9 +18,10 @@ program
 
 // ── analyze ──────────────────────────────────────────────────────────────────
 program
-  .command("analyze <repoUrl>")
+  .command("analyze <repoUrlOrPath>")
   .description(
-    "Analyse a GitHub repository.\n" + "  <repoUrl>  owner/repo  or  https://github.com/owner/repo"
+    "Analyse a GitHub repository or local directory.\n" +
+      "  <repoUrlOrPath>  owner/repo, https://github.com/owner/repo, or local path (e.g. . or /path/to/repo)"
   )
   .option("--no-llm", "Disable LLM calls — use rule-based checks only")
   .option("--json", "Output raw JSON instead of Markdown")
@@ -83,14 +84,16 @@ program
 
 // ── improve-readme ────────────────────────────────────────────────────────────
 program
-  .command("improve-readme <repoUrl>")
-  .description("Analyze a README and generate section gap analysis and suggested improvements")
-  .action(async (repoUrl: string) => {
+  .command("improve-readme <repoUrlOrPath>")
+  .description(
+    "Analyze a README and generate section gap analysis and suggested improvements (GitHub URL or local path)"
+  )
+  .action(async (repoUrlOrPath: string) => {
     const { readRepo } = await import("./tools/repoReader.js");
     const { improveReadme } = await import("./tools/readmeImprover.js");
-    console.error(`Fetching README for ${repoUrl}…`);
+    console.error(`Fetching README for ${repoUrlOrPath}…`);
     try {
-      const repoResult = await readRepo(repoUrl, process.env.GITHUB_TOKEN);
+      const repoResult = await readRepo(repoUrlOrPath, process.env.GITHUB_TOKEN);
       if (!repoResult.success) {
         throw new Error(repoResult.error);
       }

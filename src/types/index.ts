@@ -84,6 +84,8 @@ export interface RepoData {
   hasGitignore: boolean;
   hasLicense: boolean;
   packageJson: Record<string, unknown> | null;
+  /** When set, repository was loaded from the local filesystem at this path. */
+  localPath?: string;
 }
 
 /** Aggregated results of analysing all aspects of a repository. */

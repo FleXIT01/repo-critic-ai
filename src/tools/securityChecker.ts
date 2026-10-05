@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { Octokit } from "@octokit/rest";
 import type { RepoData, SecurityFinding, ToolResult } from "../types/index.js";
 
@@ -137,8 +139,8 @@ export async function checkSecurity(
     }
 
     // 2 — scan a sample of source files for hardcoded secrets
-    const { owner, name, fileTree } = repoData;
-    const octokit = new Octokit({ auth: githubToken });
+    const { owner, name, fileTree, localPath } = repoData;
+    const maxToScan = localPath ? 25 : MAX_FILES_TO_SCAN;
 
     const candidates = fileTree
       .filter(
@@ -149,26 +151,47 @@ export async function checkSecurity(
           (f.size === undefined || f.size <= MAX_FILE_SIZE)
       )
       .sort((a, b) => candidateScore(b.path) - candidateScore(a.path))
-      .slice(0, MAX_FILES_TO_SCAN);
+      .slice(0, maxToScan);
 
-    await Promise.allSettled(
-      candidates.map(async (f) => {
-        const res = await octokit.repos.getContent({ owner, repo: name, path: f.path });
-        if (Array.isArray(res.data) || !("content" in res.data)) return;
-        const content = Buffer.from(res.data.content, "base64").toString("utf-8");
-
-        for (const { pattern, category, severity } of SECRET_PATTERNS) {
-          if (pattern.test(content)) {
-            findings.push({
-              severity,
-              category,
-              file: f.path,
-              description: `Possible ${category} detected`,
-            });
-          }
+    function scanContentForSecrets(filePath: string, content: string) {
+      for (const { pattern, category, severity } of SECRET_PATTERNS) {
+        if (pattern.test(content)) {
+          findings.push({
+            severity,
+            category,
+            file: filePath,
+            description: `Possible ${category} detected`,
+          });
         }
-      })
-    );
+      }
+    }
+
+    if (localPath) {
+      await Promise.allSettled(
+        candidates.map(async (f) => {
+          try {
+            const content = await readFile(join(localPath, f.path), "utf-8");
+            scanContentForSecrets(f.path, content);
+          } catch {
+            // ignore unreadable file
+          }
+        })
+      );
+    } else {
+      const octokit = new Octokit({ auth: githubToken });
+      await Promise.allSettled(
+        candidates.map(async (f) => {
+          try {
+            const res = await octokit.repos.getContent({ owner, repo: name, path: f.path });
+            if (Array.isArray(res.data) || !("content" in res.data)) return;
+            const content = Buffer.from(res.data.content, "base64").toString("utf-8");
+            scanContentForSecrets(f.path, content);
+          } catch {
+            // ignore
+          }
+        })
+      );
+    }
 
     return {
       toolName: "securityChecker",

@@ -21,7 +21,9 @@ export function planAnalysis(repoData: RepoData, hasGithubToken: boolean): Analy
     runReadmeAnalyzer: true,
     runTodoScanner: hasSourceFiles,
     runSecurityChecker: true,
-    // Skip issue analysis on private repos without a token to avoid 401 errors
-    runIssueHelper: hasGithubToken || !repoData.isPrivate,
+    // Skip issue analysis on local repos unless a GitHub token and remote owner exist
+    runIssueHelper: repoData.localPath
+      ? Boolean(hasGithubToken && repoData.owner !== "local")
+      : hasGithubToken || !repoData.isPrivate,
   };
 }

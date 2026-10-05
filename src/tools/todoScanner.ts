@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { Octokit } from "@octokit/rest";
 import type { RepoData, TodoItem, ToolResult } from "../types/index.js";
 
@@ -104,9 +106,9 @@ export async function scanTodos(
   const start = Date.now();
 
   try {
-    const { owner, name, fileTree } = repoData;
-    const octokit = new Octokit({ auth: githubToken });
+    const { owner, name, fileTree, localPath } = repoData;
 
+    const maxToScan = localPath ? 50 : MAX_FILES;
     const candidates = fileTree
       .filter(
         (f) =>
@@ -116,24 +118,40 @@ export async function scanTodos(
           (f.size === undefined || f.size <= MAX_FILE_SIZE)
       )
       .sort((a, b) => candidateScore(b.path) - candidateScore(a.path))
-      .slice(0, MAX_FILES);
+      .slice(0, maxToScan);
 
-    const results = await Promise.allSettled(
-      candidates.map((f) =>
-        octokit.repos.getContent({ owner, repo: name, path: f.path }).then((res) => {
-          if (Array.isArray(res.data) || !("content" in res.data)) return [];
-          const content = Buffer.from(res.data.content, "base64").toString("utf-8");
-          return scanContent(f.path, content);
+    let todos: TodoItem[] = [];
+
+    if (localPath) {
+      const results = await Promise.allSettled(
+        candidates.map(async (f) => {
+          try {
+            const content = await readFile(join(localPath, f.path), "utf-8");
+            return scanContent(f.path, content);
+          } catch {
+            return [];
+          }
         })
-      )
-    );
+      );
+      todos = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+    } else {
+      const octokit = new Octokit({ auth: githubToken });
+      const results = await Promise.allSettled(
+        candidates.map((f) =>
+          octokit.repos.getContent({ owner, repo: name, path: f.path }).then((res) => {
+            if (Array.isArray(res.data) || !("content" in res.data)) return [];
+            const content = Buffer.from(res.data.content, "base64").toString("utf-8");
+            return scanContent(f.path, content);
+          })
+        )
+      );
+      todos = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+    }
 
-    const todos = results
-      .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-      .sort((a, b) => {
-        const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-        return order[a.priority] - order[b.priority];
-      });
+    todos.sort((a, b) => {
+      const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+      return order[a.priority] - order[b.priority];
+    });
 
     return { toolName: "todoScanner", success: true, data: todos, durationMs: Date.now() - start };
   } catch (err) {
