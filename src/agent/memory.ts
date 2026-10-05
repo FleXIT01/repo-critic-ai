@@ -30,9 +30,7 @@ export class AnalysisMemory {
 
   /** Returns all entries sorted newest first. */
   list(): MemoryEntry[] {
-    return [...this.entries.values()].sort(
-      (a, b) => b.storedAt.getTime() - a.storedAt.getTime()
-    );
+    return [...this.entries.values()].sort((a, b) => b.storedAt.getTime() - a.storedAt.getTime());
   }
 
   toJSON(): string {

@@ -78,9 +78,6 @@ export async function analyzeReadme(content: string | null): Promise<ToolResult<
  * Optional LLM enhancement: ask the model for a concise review of the README.
  * Returns null when llm.enabled is false.
  */
-export async function getReadmeLLMReview(
-  content: string,
-  llm: LLMCaller
-): Promise<string | null> {
+export async function getReadmeLLMReview(content: string, llm: LLMCaller): Promise<string | null> {
   return llm.call(content.slice(0, 4000), PROMPTS.README_SUMMARY);
 }

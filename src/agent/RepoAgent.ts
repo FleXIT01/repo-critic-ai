@@ -80,8 +80,12 @@ export class RepoAgent {
     const plan = planAnalysis(repo, Boolean(this.githubToken));
 
     const emptyReadme: ReadmeAnalysis = {
-      present: false, lengthWords: 0, hasInstallSection: false,
-      hasUsageSection: false, hasExamples: false, score: 0,
+      present: false,
+      lengthWords: 0,
+      hasInstallSection: false,
+      hasUsageSection: false,
+      hasExamples: false,
+      score: 0,
     };
 
     // 3 — run tools in parallel

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>repo-critic-ai</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -89,14 +90,21 @@
   <p id="status"></p>
   <p id="error" hidden></p>
   <div id="result" hidden></div>
+  <div id="improveBox" hidden style="margin-top: 1.5rem;">
+    <button type="button" id="improveBtn" style="background: #1f6feb;">✨ Suggest README Improvements</button>
+    <div id="improveResult" hidden style="margin-top: 1rem; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; white-space: pre-wrap; font-family: monospace; font-size: 0.88rem; overflow-x: auto;"></div>
+  </div>
 
   <script>
-    const form   = document.getElementById('form');
-    const input  = document.getElementById('repoUrl');
-    const btn    = document.getElementById('btn');
-    const status = document.getElementById('status');
-    const error  = document.getElementById('error');
-    const result = document.getElementById('result');
+    const form          = document.getElementById('form');
+    const input         = document.getElementById('repoUrl');
+    const btn           = document.getElementById('btn');
+    const status        = document.getElementById('status');
+    const error         = document.getElementById('error');
+    const result        = document.getElementById('result');
+    const improveBox    = document.getElementById('improveBox');
+    const improveBtn    = document.getElementById('improveBtn');
+    const improveResult = document.getElementById('improveResult');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -104,6 +112,8 @@
       status.textContent = '⏳ Analysing… this may take 10–30 seconds.';
       error.hidden = true;
       result.hidden = true;
+      improveBox.hidden = true;
+      improveResult.hidden = true;
 
       try {
         const res = await fetch('/analyze', {
@@ -119,8 +129,9 @@
         const reportRes = await fetch(`/report/${data.id}`);
         const report = await reportRes.json();
 
-        result.innerHTML = marked.parse(report.markdownReport);
+        result.innerHTML = DOMPurify.sanitize(marked.parse(report.markdownReport));
         result.hidden = false;
+        improveBox.hidden = false;
         status.textContent = '';
       } catch (err) {
         error.textContent = '❌ ' + err.message;
@@ -128,6 +139,28 @@
         status.textContent = '';
       } finally {
         btn.disabled = false;
+      }
+    });
+
+    improveBtn.addEventListener('click', async () => {
+      improveBtn.disabled = true;
+      improveBtn.textContent = '⏳ Generating README suggestions…';
+      try {
+        const res = await fetch('/analyze/improve-readme', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repoUrl: input.value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to improve README');
+
+        improveResult.textContent = data.improvement;
+        improveResult.hidden = false;
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        improveBtn.disabled = false;
+        improveBtn.textContent = '✨ Suggest README Improvements';
       }
     });
   </script>

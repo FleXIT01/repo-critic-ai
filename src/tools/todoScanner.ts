@@ -2,30 +2,54 @@ import { Octokit } from "@octokit/rest";
 import type { RepoData, TodoItem, ToolResult } from "../types/index.js";
 
 const SOURCE_EXTENSIONS = new Set([
-  ".ts", ".tsx", ".js", ".jsx", ".mjs",
-  ".py", ".go", ".rs", ".java", ".rb",
-  ".php", ".cs", ".cpp", ".c", ".swift",
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".py",
+  ".go",
+  ".rs",
+  ".java",
+  ".rb",
+  ".php",
+  ".cs",
+  ".cpp",
+  ".c",
+  ".swift",
 ]);
 
 const EXCLUDED_DIRS = new Set([
-  "node_modules", "dist", "build", ".git", "vendor", "coverage", ".next",
+  "node_modules",
+  "dist",
+  "build",
+  ".git",
+  "vendor",
+  "coverage",
+  ".next",
+  "test",
+  "tests",
+  "__tests__",
+  "spec",
+  "fixtures",
+  "mock",
+  "mocks",
 ]);
 
 // Matches // TODO: ..., # FIXME ..., * HACK: ..., etc.
 const TODO_RE = /(?:\/\/|#|\*)\s*(TODO|FIXME|HACK|NOTE)[:\s]+(.*)/i;
 
-const SECURITY_RE = /\b(auth|password|token|encrypt|secret|credential|hash|salt|jwt|oauth|session|csrf|xss|sql|injection)\b/i;
-const PERF_TEXT_RE = /\b(perf|performance|optim|slow|cache|memo|latency|throughput|bottleneck|cpu|memory.?leak)\b/i;
-const HOT_PATH_RE = /\b(for|while)\s*\(|\.(?:forEach|map|filter|reduce)\s*\(|\brender\s*[({]|\bfetch\s*\(/;
+const SECURITY_RE =
+  /\b(auth|password|token|encrypt|secret|credential|hash|salt|jwt|oauth|session|csrf|xss|sql|injection)\b/i;
+const PERF_TEXT_RE =
+  /\b(perf|performance|optim|slow|cache|memo|latency|throughput|bottleneck|cpu|memory.?leak)\b/i;
+const HOT_PATH_RE =
+  /\b(for|while)\s*\(|\.(?:forEach|map|filter|reduce)\s*\(|\brender\s*[({]|\bfetch\s*\(/;
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 100_000; // 100 KB
 
-function priorityFor(
-  type: TodoItem["type"],
-  text: string,
-  context: string
-): TodoItem["priority"] {
+function priorityFor(type: TodoItem["type"], text: string, context: string): TodoItem["priority"] {
   if (SECURITY_RE.test(text)) return "critical";
   if (PERF_TEXT_RE.test(text) || HOT_PATH_RE.test(context)) return "high";
   if (type === "NOTE") return "low";
@@ -41,14 +65,27 @@ function scanContent(path: string, content: string): TodoItem[] {
       const type = match[1].toUpperCase() as TodoItem["type"];
       const text = match[2].trim().slice(0, 120);
       const context = lines.slice(Math.max(0, i - 5), Math.min(lines.length, i + 6)).join("\n");
-      items.push({ type, file: path, line: i + 1, text, priority: priorityFor(type, text, context) });
+      items.push({
+        type,
+        file: path,
+        line: i + 1,
+        text,
+        priority: priorityFor(type, text, context),
+      });
     }
   }
   return items;
 }
 
 function isExcluded(path: string): boolean {
-  return path.split("/").some((part) => EXCLUDED_DIRS.has(part));
+  return path.split("/").some((part) => EXCLUDED_DIRS.has(part.toLowerCase()));
+}
+
+function candidateScore(path: string): number {
+  const lower = path.toLowerCase();
+  if (lower.startsWith("src/") || lower.startsWith("lib/") || lower.startsWith("app/")) return 2;
+  if (/^(index|main|server|app)\.[a-z]+$/i.test(path.split("/").pop() ?? "")) return 1;
+  return 0;
 }
 
 function hasSourceExtension(path: string): boolean {
@@ -78,17 +115,16 @@ export async function scanTodos(
           !isExcluded(f.path) &&
           (f.size === undefined || f.size <= MAX_FILE_SIZE)
       )
+      .sort((a, b) => candidateScore(b.path) - candidateScore(a.path))
       .slice(0, MAX_FILES);
 
     const results = await Promise.allSettled(
       candidates.map((f) =>
-        octokit.repos
-          .getContent({ owner, repo: name, path: f.path })
-          .then((res) => {
-            if (Array.isArray(res.data) || !("content" in res.data)) return [];
-            const content = Buffer.from(res.data.content, "base64").toString("utf-8");
-            return scanContent(f.path, content);
-          })
+        octokit.repos.getContent({ owner, repo: name, path: f.path }).then((res) => {
+          if (Array.isArray(res.data) || !("content" in res.data)) return [];
+          const content = Buffer.from(res.data.content, "base64").toString("utf-8");
+          return scanContent(f.path, content);
+        })
       )
     );
 

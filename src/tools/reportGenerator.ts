@@ -80,7 +80,9 @@ export function generateMarkdownReport(
     const shown = analysis.todos.data.slice(0, 20);
     for (const t of shown) {
       const icon = PRIORITY_ICON[t.priority] ?? "";
-      lines.push(`| ${icon} ${t.priority} | \`${t.type}\` | \`${t.file}\` | ${t.line} | ${t.text} |`);
+      lines.push(
+        `| ${icon} ${t.priority} | \`${t.type}\` | \`${t.file}\` | ${t.line} | ${t.text} |`
+      );
     }
     if (analysis.todos.data.length > 20) {
       lines.push("", `*… and ${analysis.todos.data.length - 20} more.*`);

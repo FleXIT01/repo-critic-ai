@@ -15,9 +15,7 @@ const SOURCE_RE = /\.(ts|tsx|js|jsx|py|go|rs|java|rb|php|cs|cpp|c|swift|kt)$/;
  * useless results (e.g. todoScanner on a repo with no source files).
  */
 export function planAnalysis(repoData: RepoData, hasGithubToken: boolean): AnalysisPlan {
-  const hasSourceFiles = repoData.fileTree.some(
-    (f) => f.type === "blob" && SOURCE_RE.test(f.path)
-  );
+  const hasSourceFiles = repoData.fileTree.some((f) => f.type === "blob" && SOURCE_RE.test(f.path));
 
   return {
     runReadmeAnalyzer: true,

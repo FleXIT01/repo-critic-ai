@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Production / build output
+dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Test coverage & tooling caches
+coverage/
+.vite/
+*.tsbuildinfo
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db

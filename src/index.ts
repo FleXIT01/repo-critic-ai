@@ -20,8 +20,7 @@ program
 program
   .command("analyze <repoUrl>")
   .description(
-    "Analyse a GitHub repository.\n" +
-      "  <repoUrl>  owner/repo  or  https://github.com/owner/repo"
+    "Analyse a GitHub repository.\n" + "  <repoUrl>  owner/repo  or  https://github.com/owner/repo"
   )
   .option("--no-llm", "Disable LLM calls — use rule-based checks only")
   .option("--json", "Output raw JSON instead of Markdown")
@@ -32,10 +31,18 @@ program
     process.env.LLM_BASE_URL ?? "http://localhost:11434/v1"
   )
   .option("--api-key <key>", "API key for the LLM endpoint", process.env.LLM_API_KEY ?? "")
+  .option("--improve-readme", "Generate suggested README improvements and diff")
   .action(
     async (
       repoUrl: string,
-      options: { llm: boolean; json: boolean; model: string; baseUrl: string; apiKey: string }
+      options: {
+        llm: boolean;
+        json: boolean;
+        model: string;
+        baseUrl: string;
+        apiKey: string;
+        improveReadme?: boolean;
+      }
     ) => {
       const llmConfig: LLMConfig = {
         enabled: options.llm && options.apiKey.length > 0,
@@ -56,12 +63,44 @@ program
           console.log(report.markdownReport);
           console.error(`\nHealth Score: ${report.score}/100 (${report.grade})`);
         }
+
+        if (options.improveReadme) {
+          const { readRepo } = await import("./tools/repoReader.js");
+          const { improveReadme } = await import("./tools/readmeImprover.js");
+          const repoResult = await readRepo(repoUrl, process.env.GITHUB_TOKEN);
+          if (repoResult.success && repoResult.data.readmeContent) {
+            console.log("\n## README Improvement Suggestions & Diff\n");
+            const diff = await improveReadme(repoResult.data.readmeContent);
+            console.log(diff);
+          }
+        }
       } catch (err) {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
     }
   );
+
+// ── improve-readme ────────────────────────────────────────────────────────────
+program
+  .command("improve-readme <repoUrl>")
+  .description("Analyze a README and generate section gap analysis and suggested improvements")
+  .action(async (repoUrl: string) => {
+    const { readRepo } = await import("./tools/repoReader.js");
+    const { improveReadme } = await import("./tools/readmeImprover.js");
+    console.error(`Fetching README for ${repoUrl}…`);
+    try {
+      const repoResult = await readRepo(repoUrl, process.env.GITHUB_TOKEN);
+      if (!repoResult.success) {
+        throw new Error(repoResult.error);
+      }
+      const diff = await improveReadme(repoResult.data.readmeContent ?? "");
+      console.log(diff);
+    } catch (err) {
+      console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      process.exit(1);
+    }
+  });
 
 // ── web ───────────────────────────────────────────────────────────────────────
 program

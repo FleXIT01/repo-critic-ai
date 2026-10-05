@@ -3,9 +3,9 @@ import { PROMPTS } from "../llm/prompts.js";
 
 const SECTION_RES: Record<string, RegExp> = {
   Installation: /^#{1,3}\s+(install|installation|getting[- ]started|setup|quick[- ]start)\b/im,
-  Usage:        /^#{1,3}\s+(usage|how[- ]to[- ]use|how[- ]to[- ]run|examples?)\b/im,
+  Usage: /^#{1,3}\s+(usage|how[- ]to[- ]use|how[- ]to[- ]run|examples?)\b/im,
   Contributing: /^#{1,3}\s+(contribut(ing)?|development)\b/im,
-  License:      /^#{1,3}\s+(licen[sc]e)\b/im,
+  License: /^#{1,3}\s+(licen[sc]e)\b/im,
 };
 
 function detectMissingSections(content: string): string[] {
@@ -15,21 +15,22 @@ function detectMissingSections(content: string): string[] {
 type Edit = { op: " " | "+" | "-"; line: string };
 
 function diffLines(a: string[], b: string[]): Edit[] {
-  const m = a.length, n = b.length;
+  const m = a.length;
+  const n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
   for (let i = 1; i <= m; i++)
     for (let j = 1; j <= n; j++)
       dp[i][j] =
-        a[i - 1] === b[j - 1]
-          ? dp[i - 1][j - 1] + 1
-          : Math.max(dp[i - 1][j], dp[i][j - 1]);
+        a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
 
   const edits: Edit[] = [];
-  let i = m, j = n;
+  let i = m;
+  let j = n;
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
       edits.unshift({ op: " ", line: a[i - 1] });
-      i--; j--;
+      i--;
+      j--;
     } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
       edits.unshift({ op: "+", line: b[j - 1] });
       j--;
@@ -65,7 +66,8 @@ function formatUnifiedDiff(original: string, improved: string, contextLines = 3)
   hunks.push([hStart, hEnd]);
 
   // Pre-compute 1-based original/new line numbers at each edit index
-  let oLine = 1, nLine = 1;
+  let oLine = 1;
+  let nLine = 1;
   const origAt: number[] = [];
   const newAt: number[] = [];
   for (const e of edits) {
@@ -77,7 +79,8 @@ function formatUnifiedDiff(original: string, improved: string, contextLines = 3)
 
   const out: string[] = ["--- README.md", "+++ README.md (improved)"];
   for (const [hs, he] of hunks) {
-    let origCount = 0, newCount = 0;
+    let origCount = 0;
+    let newCount = 0;
     for (let k = hs; k <= he; k++) {
       if (edits[k].op !== "+") origCount++;
       if (edits[k].op !== "-") newCount++;

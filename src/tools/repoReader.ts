@@ -57,10 +57,9 @@ export async function readRepo(
     // README content is base64-encoded by the API
     let readmeContent: string | null = null;
     if (readmeResult.status === "fulfilled") {
-      readmeContent = Buffer.from(
-        readmeResult.value.data.content ?? "",
-        "base64"
-      ).toString("utf-8");
+      readmeContent = Buffer.from(readmeResult.value.data.content ?? "", "base64").toString(
+        "utf-8"
+      );
     }
 
     // Cap file tree at 500 entries to keep memory usage reasonable

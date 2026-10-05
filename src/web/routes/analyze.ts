@@ -35,8 +35,34 @@ export function analyzeRoute(memory: AnalysisMemory, llmConfig: LLMConfig): Hono
         summary: report.summary,
       });
     } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : "Analysis failed" }, 500);
+    }
+  });
+
+  router.post("/improve-readme", async (c) => {
+    let body: { repoUrl?: unknown };
+    try {
+      body = await c.req.json<{ repoUrl?: unknown }>();
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+
+    if (typeof body.repoUrl !== "string" || body.repoUrl.trim().length === 0) {
+      return c.json({ error: "repoUrl (non-empty string) is required" }, 400);
+    }
+
+    try {
+      const { readRepo } = await import("../../tools/repoReader.js");
+      const { improveReadme } = await import("../../tools/readmeImprover.js");
+      const repoResult = await readRepo(body.repoUrl.trim(), process.env.GITHUB_TOKEN);
+      if (!repoResult.success) {
+        return c.json({ error: `Failed to read repository: ${repoResult.error}` }, 400);
+      }
+      const improvement = await improveReadme(repoResult.data.readmeContent ?? "");
+      return c.json({ improvement });
+    } catch (err) {
       return c.json(
-        { error: err instanceof Error ? err.message : "Analysis failed" },
+        { error: err instanceof Error ? err.message : "README improvement failed" },
         500
       );
     }

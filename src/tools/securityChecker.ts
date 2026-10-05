@@ -12,7 +12,11 @@ const SECRET_PATTERNS: SecretPattern[] = [
   { pattern: /AKIA[0-9A-Z]{16}/, category: "AWS Access Key", severity: "critical" },
   { pattern: /sk-[a-zA-Z0-9]{32,}(?![\w-])/, category: "OpenAI API Key", severity: "critical" },
   { pattern: /ghp_[a-zA-Z0-9]{36}/, category: "GitHub Personal Token", severity: "critical" },
-  { pattern: /-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY-----/, category: "Private Key", severity: "critical" },
+  {
+    pattern: /-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY-----/,
+    category: "Private Key",
+    severity: "critical",
+  },
   {
     pattern: /password\s*[=:]\s*["'][^"'${}\\n]{8,}["']/i,
     category: "Hardcoded Password",
@@ -27,25 +31,79 @@ interface SensitiveFileRule {
 }
 
 const SENSITIVE_FILE_RULES: SensitiveFileRule[] = [
-  { pattern: /^\.env$/, severity: "critical", description: ".env file committed to the repository" },
-  { pattern: /^\.env\.(local|production|prod)$/, severity: "critical", description: "Environment secrets file committed" },
+  {
+    pattern: /^\.env$/,
+    severity: "critical",
+    description: ".env file committed to the repository",
+  },
+  {
+    pattern: /^\.env\.(local|production|prod)$/,
+    severity: "critical",
+    description: "Environment secrets file committed",
+  },
   { pattern: /\.pem$/, severity: "critical", description: "PEM certificate/key file committed" },
-  { pattern: /\.(key|p12|pfx)$/, severity: "critical", description: "Private key or certificate file committed" },
-  { pattern: /^\.aws\/credentials$/, severity: "critical", description: "AWS credentials file committed" },
-  { pattern: /^id_(rsa|ecdsa|ed25519)$/, severity: "high", description: "SSH private key file committed" },
+  {
+    pattern: /\.(key|p12|pfx)$/,
+    severity: "critical",
+    description: "Private key or certificate file committed",
+  },
+  {
+    pattern: /^\.aws\/credentials$/,
+    severity: "critical",
+    description: "AWS credentials file committed",
+  },
+  {
+    pattern: /^id_(rsa|ecdsa|ed25519)$/,
+    severity: "high",
+    description: "SSH private key file committed",
+  },
 ];
 
 const MAX_FILES_TO_SCAN = 5;
 const MAX_FILE_SIZE = 50_000;
-const SCAN_EXTENSIONS = new Set([".ts", ".js", ".py", ".go", ".env", ".yml", ".yaml", ".json", ".sh"]);
+const SCAN_EXTENSIONS = new Set([
+  ".ts",
+  ".js",
+  ".py",
+  ".go",
+  ".env",
+  ".yml",
+  ".yaml",
+  ".json",
+  ".sh",
+]);
 
 function hasScanExtension(path: string): boolean {
   const dot = path.lastIndexOf(".");
   return dot !== -1 && SCAN_EXTENSIONS.has(path.slice(dot));
 }
 
+const EXCLUDED_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  "vendor",
+  "coverage",
+  ".next",
+  "test",
+  "tests",
+  "__tests__",
+  "spec",
+  "fixtures",
+  "mock",
+  "mocks",
+]);
+
 function isExcluded(path: string): boolean {
-  return path.startsWith("node_modules/") || path.startsWith(".git/") || path.startsWith("dist/");
+  return path.split("/").some((part) => EXCLUDED_DIRS.has(part.toLowerCase()));
+}
+
+function candidateScore(path: string): number {
+  const lower = path.toLowerCase();
+  if (lower.startsWith("src/") || lower.startsWith("lib/") || lower.startsWith("app/")) return 2;
+  if (/^(index|main|server|app|config|auth)\.[a-z]+$/i.test(path.split("/").pop() ?? "")) return 1;
+  return 0;
 }
 
 /**
@@ -90,6 +148,7 @@ export async function checkSecurity(
           !isExcluded(f.path) &&
           (f.size === undefined || f.size <= MAX_FILE_SIZE)
       )
+      .sort((a, b) => candidateScore(b.path) - candidateScore(a.path))
       .slice(0, MAX_FILES_TO_SCAN);
 
     await Promise.allSettled(
