@@ -9,13 +9,20 @@ Optionally plug in an LLM (Ollama, OpenAI, LM Studio) for AI-generated summaries
 
 ## Quick Start
 
-**Easiest — Python launcher:**
+**Easiest — Python launcher (Linux, macOS, Windows):**
 ```bash
+# Linux / macOS:
+python3 start.py                         # web UI at http://localhost:3000
+python3 start.py analyze owner/repo      # CLI analysis
+# Or directly (executable on Linux/macOS):
+./start.py analyze owner/repo
+
+# Windows:
 python start.py                          # web UI at http://localhost:3000
 python start.py analyze owner/repo       # CLI analysis
 ```
 
-**Or with npm:**
+**Or directly with npm:**
 ```bash
 npm install
 npx tsx src/index.ts analyze microsoft/vscode
@@ -29,10 +36,14 @@ npx tsx src/index.ts web
 Requires **Node.js 22+** and **Python 3.8+** (for the launcher).
 
 ```bash
-git clone https://github.com/your-username/repo-critic-ai
+git clone https://github.com/FleXIT01/repo-critic-ai.git
 cd repo-critic-ai
 npm install
 ```
+
+> **Linux Note:**
+> Make sure `node -v` reports v22+ (e.g., install via [nvm](https://github.com/nvm-sh/nvm): `nvm install 22 && nvm use 22`).
+> `start.py` is executable by default on Linux/macOS (`chmod +x start.py`).
 
 ---
 
@@ -41,11 +52,16 @@ npm install
 ### Python launcher (`start.py`)
 
 ```bash
-python start.py                          # start web UI (default port 3000)
-python start.py web --port 8080          # custom port
-python start.py analyze owner/repo       # CLI: print Markdown report
-python start.py analyze owner/repo --json  # CLI: raw JSON output
-python start.py analyze owner/repo --no-llm  # disable LLM calls
+# Linux / macOS:
+python3 start.py                                  # start web UI (default port 3000)
+python3 start.py web --port 8080                  # custom port
+python3 start.py analyze owner/repo               # CLI: print Markdown report
+python3 start.py analyze owner/repo --improve-readme  # with suggested README improvements
+python3 start.py analyze owner/repo --json        # CLI: raw JSON output
+python3 start.py analyze owner/repo --no-llm      # disable LLM calls
+
+# Windows:
+python start.py analyze owner/repo
 ```
 
 The launcher auto-runs `npm install` on first start.
@@ -57,6 +73,7 @@ npx tsx src/index.ts web
 ```
 
 Open [http://localhost:3000](http://localhost:3000), enter a GitHub URL or `owner/repo`, and click **Analyse**.
+The Web UI features client-side sanitization (DOMPurify) and a one-click button to generate suggested README improvements and diffs.
 
 ### CLI
 
@@ -65,7 +82,15 @@ Open [http://localhost:3000](http://localhost:3000), enter a GitHub URL or `owne
 npx tsx src/index.ts analyze facebook/react
 
 # With GitHub token (5 000 req/hour, required for private repos)
+# Linux / macOS:
 GITHUB_TOKEN=ghp_... npx tsx src/index.ts analyze your-org/private-repo
+# Windows PowerShell:
+$env:GITHUB_TOKEN="ghp_..."; npx tsx src/index.ts analyze your-org/private-repo
+
+# Generate suggested README improvements & diff
+npx tsx src/index.ts analyze owner/repo --improve-readme
+# Or standalone README inspection:
+npx tsx src/index.ts improve-readme owner/repo
 
 # With local Ollama for AI summaries
 LLM_API_KEY=ollama npx tsx src/index.ts analyze owner/repo
@@ -182,6 +207,7 @@ npm run dev           # run CLI via tsx (no build step)
 |---|---|---|---|
 | `GET` | `/` | — | Web UI |
 | `POST` | `/analyze` | `{ repoUrl: string }` | Start analysis, returns `{ id, score, grade, summary }` |
+| `POST` | `/analyze/improve-readme` | `{ repoUrl: string }` | Analyze README section gaps & generate unified diff |
 | `GET` | `/report/:id` | — | Full `HealthReport` JSON |
 | `GET` | `/report` | — | List of all stored reports |
 
