@@ -40,12 +40,15 @@ Requires **Node.js 22+** and **Python 3.8+** (for the launcher).
 ```bash
 git clone https://github.com/FleXIT01/repo-critic-ai.git
 cd repo-critic-ai
-npm install
+npm ci
 ```
 
 > **Linux Note:**
 > Make sure `node -v` reports v22+ (e.g., install via [nvm](https://github.com/nvm-sh/nvm): `nvm install 22 && nvm use 22`).
 > `start.py` is executable by default on Linux/macOS (`chmod +x start.py`).
+
+> **Note:** `npm ci` performs a clean, lockfile-exact install — use it over
+> `npm install` for reproducible setups (CI, fresh clones).
 
 ---
 
@@ -78,6 +81,7 @@ npx tsx src/index.ts web
 ```
 
 Open [http://localhost:3000](http://localhost:3000), enter a GitHub URL, `owner/repo`, or a **local folder path** (e.g. `.` or `/path/to/project`), and click **Analyse**.
+The server binds to `127.0.0.1` (localhost only) — it is not reachable from the network.
 The Web UI features client-side sanitization (DOMPurify) and a one-click button to generate suggested README improvements and diffs.
 
 ### CLI
@@ -153,7 +157,7 @@ The score (0–100) is a weighted average of four dimensions:
 | Dimension | Weight | What is checked |
 |---|---|---|
 | **README Quality** | 30 % | Present, length, install/usage sections, code examples |
-| **Security** | 30 % | No committed `.env`/key files, no hardcoded API keys |
+| **Security** | 30 % | No committed `.env`/key files, no hardcoded API keys (up to 25 prioritized source files are scanned) |
 | **TODO / FIXME** | 20 % | Fewer high-priority comments = higher score |
 | **Issue Quality** | 20 % | Average quality of open GitHub issues |
 
@@ -191,6 +195,7 @@ src/
 └── types/index.ts           Shared TypeScript interfaces
 tests/
 ├── readmeAnalyzer.test.ts
+├── localRepo.test.ts
 ├── planner.test.ts
 ├── memory.test.ts
 ├── llmClient.test.ts
