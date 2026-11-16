@@ -61,7 +61,7 @@ const SENSITIVE_FILE_RULES: SensitiveFileRule[] = [
   },
 ];
 
-const MAX_FILES_TO_SCAN = 5;
+const MAX_FILES_TO_SCAN = 25;
 const MAX_FILE_SIZE = 50_000;
 const SCAN_EXTENSIONS = new Set([
   ".ts",
